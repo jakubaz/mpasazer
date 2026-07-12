@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mPasażer – Ochrona podróży z DelayFix</title>
+    <meta name="description" content="mPasażer to aplikacja do zarządzania lotami, checklistą bagażową i zgłaszania roszczeń odszkodowawczych przez DelayFix.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+    <!-- ===================================================
+         EKRAN: LOGOWANIE
+    =================================================== -->
+    <div class="screen active" id="screen-login">
+        <div class="login-page">
+            <div class="login-brand">
+                <div class="brand-logo">mP</div>
+                <h1>mPasażer</h1>
+                <p class="tagline">Ochrona podróży z DelayFix</p>
+            </div>
+            <div class="login-card">
+                <div class="login-step" id="login-step-phone">
+                    <h2>Zaloguj się do swojej podróży</h2>
+                    <p class="login-desc">Użyj numeru telefonu podanego przy zakupie biletu. Wyślemy Ci jednorazowy kod SMS.</p>
+                    <div class="form-group">
+                        <div class="phone-input-wrapper">
+                            <span class="prefix">+48</span>
+                            <input type="tel" id="login-phone" placeholder="500 600 700" value="501 234 567">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="btn-send-otp">Wyślij kod SMS</button>
+                </div>
+                <div class="login-step hidden" id="login-step-otp">
+                    <h2>Wpisz kod SMS</h2>
+                    <p class="login-desc">Wysłaliśmy kod weryfikacyjny na Twój numer telefonu.</p>
+                    <div class="form-group">
+                        <input type="text" id="login-otp" placeholder="123 456" maxlength="6" class="otp-input">
+                    </div>
+                    <button class="btn btn-primary" id="btn-verify-otp">Zaloguj się</button>
+                    <button class="btn btn-link" id="btn-resend-otp">Wyślij kod ponownie</button>
+                </div>
+            </div>
+            <p class="login-footer">Bez haseł &nbsp;•&nbsp; Bez e-maili &nbsp;•&nbsp; Bezpieczny dostęp</p>
+        </div>
+    </div>
+
+    <!-- ===================================================
+         EKRAN: GŁÓWNA APLIKACJA
+    =================================================== -->
+    <div class="screen" id="screen-main-app">
+
+        <!-- Sticky Header -->
+        <header class="app-header">
+            <div class="app-header-inner">
+                <div class="header-brand" id="app-logo">mPasażer</div>
+                <div class="header-actions">
+                    <button class="btn-theme-toggle" id="btn-theme-toggle" title="Przełącz motyw">🌙</button>
+                    <button class="btn-logout" id="btn-logout">Wyloguj</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Belka powrotu – widoczna tylko w szczegółach lotu -->
+        <div class="back-nav-bar hidden" id="app-back-nav-bar">
+            <div class="app-content-wrapper">
+                <button class="btn-back-nav" id="btn-back-home">← Wróć do pulpitu</button>
+            </div>
+        </div>
+
+        <!-- Przewijalny obszar treści -->
+        <main class="app-main" id="app-scrollable-container">
+
+            <!-- ===================== WIDOK: STRONA GŁÓWNA ===================== -->
+            <div class="route-view active" id="view-home">
+                <div class="app-content-wrapper">
+
+                    <div class="user-greeting">
+                        <span class="greeting-hello">Witaj w podróży,</span>
+                        <span class="greeting-phone" id="user-phone-display">+48 501 234 567</span>
+                    </div>
+
+                    <!-- Moje Loty -->
+                    <section class="content-card" aria-label="Moje loty">
+                        <div class="card-header">
+                            <h2>Moje loty</h2>
+                        </div>
+                        <p class="card-intro">Zarządzaj swoimi podróżami i monitoruj status roszczeń.</p>
+                        <div class="flights-list" id="flights-list-container"></div>
+                        <div class="card-actions">
+                            <button class="btn btn-primary" id="btn-add-flight-manual">+ Dodaj lot</button>
+                            <button class="btn btn-secondary-action" id="btn-add-demo-flight">+ Dodaj lot (Demo)</button>
+                        </div>
+                    </section>
+
+                    <!-- Moje Sprawy -->
+                    <section class="content-card" aria-label="Moje sprawy">
+                        <div class="card-header">
+                            <h2>Moje sprawy</h2>
+                        </div>
+                        <p class="card-intro">Lista zgłoszonych wniosków do weryfikacji przez DelayFix.</p>
+                        <div class="claims-list" id="claims-list-container">
+                            <div class="empty-state" id="empty-claims-msg">Nie masz jeszcze żadnych zgłoszonych spraw.</div>
+                        </div>
+                    </section>
+
+                    <!-- FAQ -->
+                    <section class="content-card" aria-label="Baza wiedzy">
+                        <div class="card-header">
+                            <h2>Co warto wiedzieć po przylocie</h2>
+                        </div>
+                        <p class="card-intro">Przydatne instrukcje przygotowane we współpracy z DelayFix.</p>
+                        <div class="faq-accordion">
+                            <div class="faq-item">
+                                <button class="faq-question">Co zrobić, jeśli mój bagaż nie dotarł? <span>▼</span></button>
+                                <div class="faq-answer">
+                                    <p><strong>Nigdy nie opuszczaj lotniska bez zgłoszenia szkody!</strong></p>
+                                    <ol>
+                                        <li>Znajdź biuro <strong>Lost &amp; Found</strong> przed wyjściem ze strefy odbioru bagażu.</li>
+                                        <li>Uzyskaj raport <strong>PIR</strong>. Bez PIR odszkodowanie jest niemal niemożliwe.</li>
+                                        <li>Gdy masz PIR – otwórz mPasażer i kliknij <em>Zgłoś sprawę bagażową</em>.</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-question">Kiedy przysługuje mi odszkodowanie za lot? <span>▼</span></button>
+                                <div class="faq-answer">
+                                    <p>Odszkodowanie (250–600 EUR) przysługuje gdy lot był opóźniony ≥3h lub odwołany &lt;14 dni przed wylotem z przyczyn niezależnych od siły wyższej.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-question">Jak działa współpraca z DelayFix? <span>▼</span></button>
+                                <div class="faq-answer">
+                                    <p>Zgłoszenie przez mPasażer jest bezpłatne. DelayFix działa na zasadzie "No Win, No Fee" – prowizja tylko po wygraniu sprawy.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+            </div><!-- /view-home -->
+
+            <!-- =============== WIDOK: SZCZEGÓŁY LOTU =============== -->
+            <div class="route-view hidden" id="view-flight-details">
+                <div class="app-content-wrapper">
+
+                    <!-- Karta lotu -->
+                    <!-- ===== KARTA LOTU Z DANYMI NA ŻYWO ===== -->
+                    <div class="flight-card" id="main-flight-card">
+
+                        <!-- Nagłówek: numer lotu + badge statusu -->
+                        <div class="flight-header">
+                            <span class="flight-no" id="detail-flight-no">LOT LO 379</span>
+                            <span class="flight-status status-pending" id="flight-status-badge">Zaplanowany</span>
+                        </div>
+
+                        <!-- Trasa z godzinami -->
+                        <div class="route-info">
+                            <div class="route-point">
+                                <span class="time-planned" id="flight-depart-time">13:10</span>
+                                <span class="time-actual hidden" id="flight-depart-actual"></span>
+                                <span class="airport-code">WAW</span>
+                            </div>
+                            <div class="route-line-wrapper">
+                                <div class="route-plane"></div>
+                            </div>
+                            <div class="route-point">
+                                <span class="time-planned" id="flight-arrive-time">15:00</span>
+                                <span class="airport-code">FRA</span>
+                            </div>
+                        </div>
+
+                        <!-- Odświeżanie danych -->
+                        <div class="live-update-bar">
+                            <span class="live-dot" id="live-dot"></span>
+                            <span class="live-label" id="live-label">Dane na żywo</span>
+                            <span class="live-updated" id="live-updated">Odświeżam…</span>
+                            <button class="btn-refresh" id="btn-refresh-flight" title="Odśwież teraz">↻</button>
+                        </div>
+
+                        <!-- Baner odszkodowawczy (opóźnienie >3h) -->
+                        <div class="claim-banner hidden" id="flight-claim-banner">
+                            <div class="banner-body">
+                                <h4>Lot kwalifikuje się do weryfikacji</h4>
+                                <p id="banner-delay-text">Twój lot jest opóźniony o ponad 3 godziny.</p>
+                                <button class="btn btn-claim-action" id="btn-claim-flight">Zleć weryfikację DelayFix</button>
+                            </div>
+                        </div>
+
+                        <!-- Propagacja opóźnienia (poprzedni lot samolotu) -->
+                        <div class="rotation-warning hidden" id="rotation-warning">
+                            <div class="rotation-header">
+                                <span class="rotation-icon"></span>
+                                <span class="rotation-title">Uwaga: poprzedni lot samolotu jest opóźniony</span>
+                            </div>
+                            <div class="rotation-detail" id="rotation-detail">
+                                <div class="rotation-flight-row">
+                                    <span class="rotation-flight-no" id="prev-flight-no">LO 100</span>
+                                    <span class="rotation-route" id="prev-flight-route">KRK → WAW</span>
+                                    <span class="rotation-delay-badge" id="prev-flight-delay">+75 min</span>
+                                </div>
+                                <p class="rotation-explanation">Ten samolot (<span id="tail-number">SP-LNA</span>) obsłuży Twój lot. Opóźnienie poprzedniego odcinka może się propagować.</p>
+                            </div>
+                        </div>
+
+                        <!-- Wskaźnik ryzyka historycznego -->
+                        <div class="delay-risk-card hidden" id="delay-risk-card">
+                            <div class="risk-header">
+                                <span class="risk-title">Historyczny wskaźnik ryzyka opóźnienia</span>
+                                <span class="risk-badge" id="risk-badge">—</span>
+                            </div>
+                            <div class="risk-bar-wrapper">
+                                <div class="risk-bar-track">
+                                    <div class="risk-bar-fill" id="risk-bar-fill" style="width: 0%"></div>
+                                </div>
+                                <span class="risk-pct" id="risk-pct">0%</span>
+                            </div>
+                            <p class="risk-detail" id="risk-detail">Analizuję dane historyczne…</p>
+                            <p class="risk-source">Źródło: dane historyczne lotów · Symulacja DelayFix</p>
+                        </div>
+
+                    </div><!-- /flight-card -->
+
+
+
+                    <!-- Inne zakłócenia lotu -->
+                    <section class="content-card" aria-label="Inne zakłócenia lotu">
+                        <div class="card-header">
+                            <h2>Inne problemy z lotem</h2>
+                        </div>
+                        <p class="card-intro">Doświadczyłeś odmowy wejścia na pokład (overbooking) lub linia zmieniła datę/godzinę Twojego lotu? Zgłoś to tutaj, bezpłatnie zweryfikujemy sprawę.</p>
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                            <button class="btn btn-secondary-action" id="btn-report-overbooking" style="width: 100%; text-align: left; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; border-radius: 12px; font-weight: 500;">
+                                <span>🚫 Zgłoś Overbooking (Odmowa wejścia)</span>
+                                <span>➔</span>
+                            </button>
+                            <button class="btn btn-secondary-action" id="btn-report-date-change" style="width: 100%; text-align: left; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; border-radius: 12px; font-weight: 500;">
+                                <span>📅 Zgłoś zmianę daty / godziny lotu</span>
+                                <span>➔</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Checklista Bagażowa -->
+                    <section class="content-card" aria-label="Checklista bagażowa">
+                        <div class="card-header">
+                            <h2>Twoja checklista bagażowa</h2>
+                            <span class="checklist-count" id="checklist-progress">0/0 spakowane</span>
+                        </div>
+                        <p class="card-intro">Udokumentuj zawartość walizki przed wylotem. W razie zgubienia jednym kliknięciem przekażesz listę do DelayFix.</p>
+                        <ul class="checklist-items" id="checklist-ul"></ul>
+                        <div class="add-item-form">
+                            <input type="text" id="new-item-name" placeholder="Dodaj przedmiot... (np. Laptop)">
+                            <button class="btn-add-item" id="btn-add-item">+</button>
+                        </div>
+                        <div class="baggage-photos-section">
+                            <h3>Zdjęcia walizki i zawartości (Dowód)</h3>
+                            <div class="photos-grid" id="photos-grid">
+                                <div class="photo-slot upload-trigger" id="btn-upload-photo">
+                                    <span class="icon">+</span>
+                                    <span class="label">Dodaj zdjęcie</span>
+                                </div>
+                            </div>
+                            <input type="file" id="file-input" accept="image/*" class="hidden">
+                        </div>
+                        <button class="btn btn-secondary-danger btn-disabled" id="btn-claim-baggage" disabled>
+                            ⚠️ Zgłoś sprawę bagażową do DelayFix
+                        </button>
+                        <p class="baggage-hint" id="baggage-btn-hint">(Dokończ checklistę i dodaj zdjęcie, aby odblokować)</p>
+                    </section>
+
+                    <!-- FAQ w szczegółach lotu -->
+                    <section class="content-card" aria-label="Baza wiedzy">
+                        <div class="card-header">
+                            <h2>Co warto wiedzieć po przylocie</h2>
+                        </div>
+                        <p class="card-intro">Przydatne instrukcje przygotowane we współpracy z DelayFix.</p>
+                        <div class="faq-accordion">
+                            <div class="faq-item">
+                                <button class="faq-question">Co zrobić, jeśli mój bagaż nie dotarł? <span>▼</span></button>
+                                <div class="faq-answer">
+                                    <p><strong>Nigdy nie opuszczaj lotniska bez zgłoszenia szkody!</strong></p>
+                                    <ol>
+                                        <li>Znajdź biuro <strong>Lost &amp; Found</strong> przed wyjściem ze strefy odbioru bagażu.</li>
+                                        <li>Uzyskaj raport <strong>PIR</strong>. Bez PIR odszkodowanie jest niemal niemożliwe.</li>
+                                        <li>Gdy masz PIR – otwórz mPasażer i kliknij <em>Zgłoś sprawę bagażową</em>.</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-question">Kiedy przysługuje mi odszkodowanie za lot? <span>▼</span></button>
+                                <div class="faq-answer">
+                                    <p>Odszkodowanie (250–600 EUR) przysługuje gdy lot był opóźniony ≥3h lub odwołany &lt;14 dni przed wylotem z przyczyn niezależnych od siły wyższej.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-question">Jak działa współpraca z DelayFix? <span>▼</span></button>
+                                <div class="faq-answer">
+                                    <p>Zgłoszenie przez mPasażer jest bezpłatne. DelayFix działa na zasadzie "No Win, No Fee" – prowizja tylko po wygraniu sprawy.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+            </div><!-- /view-flight-details -->
+
+        </main><!-- /app-main -->
+
+        <!-- FAB – panel testowy -->
+        <button class="fab-demo" id="btn-fab-demo" title="Panel testowy">⚙️</button>
+
+        <!-- Modal: Panel Testowy -->
+        <div class="modal-overlay hidden" id="modal-demo">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Panel testowy</h3>
+                    <button class="btn-close-modal" id="btn-close-demo-modal">×</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-desc">Symuluj zdarzenia na lotnisku dla wybranego lotu.</p>
+                    <button class="btn-demo-action" id="btn-demo-delay">Zasymuluj opóźnienie (&gt;3h)</button>
+                    <button class="btn-demo-action hidden" id="btn-demo-reset-flight">Przywróć status zaplanowany</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Wizard – Zgłoszenie Bagażu -->
+        <div class="modal-overlay hidden" id="modal-baggage-wizard">
+            <div class="modal-content wizard-modal">
+                <div class="wizard-header">
+                    <button class="btn-close-modal" id="btn-close-wizard">×</button>
+                    <div class="wizard-step-bar">
+                        <div class="wizard-step-dot active" id="wdot-0"></div>
+                        <div class="wizard-step-dot" id="wdot-1"></div>
+                        <div class="wizard-step-dot" id="wdot-2"></div>
+                    </div>
+                </div>
+                <!-- EKRAN 0: Gdzie jesteś? -->
+                <div class="wizard-screen active" id="wscreen-0">
+
+                    <h3 class="wizard-title">Gdzie teraz jesteś?</h3>
+                    <p class="wizard-desc">Twoja lokalizacja decyduje o tym, co możesz zrobić i w jakiej kolejności.</p>
+                    <div class="wizard-location-cards">
+                        <button class="wizard-location-card card-a" id="wloc-a">
+                            <span class="wloc-icon">🛄</span>
+                            <div class="wloc-text"><strong>Jestem przy taśmie</strong><span>Jestem jeszcze w hali odbioru bagażu</span></div>
+                            <span class="wloc-arrow">→</span>
+                        </button>
+                        <button class="wizard-location-card card-b" id="wloc-b">
+                            <span class="wloc-icon">🚶</span>
+                            <div class="wloc-text"><strong>Wyszedłem z hali</strong><span>Jestem jeszcze na terenie lotniska</span></div>
+                            <span class="wloc-arrow">→</span>
+                        </button>
+                        <button class="wizard-location-card card-c" id="wloc-c">
+                            <span class="wloc-icon">🚗</span>
+                            <div class="wloc-text"><strong>Opuściłem lotnisko</strong><span>Wyjechałem już z lotniska</span></div>
+                            <span class="wloc-arrow">→</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- EKRAN 1A -->
+                <div class="wizard-screen hidden" id="wscreen-1a">
+                    <div class="wizard-alert alert-green">Jesteś we właściwym miejscu – działaj teraz!</div>
+                    <h3 class="wizard-title">Krok po kroku</h3>
+                    <ol class="wizard-steps-list">
+                        <li><span class="step-num">1</span><div>Znajdź stanowisko <strong>Lost &amp; Found</strong> lub <strong>Baggage Services</strong> w hali odbioru. Szukaj znaku 🧳 lub zapytaj obsługę.</div></li>
+                        <li><span class="step-num">2</span><div>Podaj: <strong>numer lotu</strong>, <strong>trasę</strong>, <strong>dane osobowe</strong> i <strong>opis walizki</strong>.</div></li>
+                        <li><span class="step-num">3</span><div>Wypełnij formularz zgłoszeniowy. Pracownik Ci pomoże.</div></li>
+                        <li><span class="step-num">4</span><div>Odbierz wydrukowany raport <strong>PIR (Property Irregularity Report)</strong>.</div></li>
+                    </ol>
+                    <div class="wizard-pir-info">
+                        <span class="pir-badge">PIR</span>
+                        <p><strong>Nie odchodź bez PIR-a.</strong> Bez niego żadne odszkodowanie nie jest możliwe prawnie.</p>
+                    </div>
+                    <button class="btn btn-primary wizard-cta" id="wbtn-a-haspir">Mam PIR – przejdź do zgłoszenia →</button>
+                    <button class="btn btn-link wizard-back" id="wbtn-a-back">← Wróć</button>
+                </div>
+                <!-- EKRAN 1B -->
+                <div class="wizard-screen hidden" id="wscreen-1b">
+                    <div class="wizard-alert alert-yellow">Wyszedłeś z hali – działaj szybko, masz jeszcze szansę!</div>
+                    <h3 class="wizard-title">Zrób to natychmiast</h3>
+                    <ol class="wizard-steps-list">
+                        <li><span class="step-num">1</span><div>Nie wychodź z terminala. Podejdź do <strong>punktu informacyjnego (i)</strong> lub pracownika w kamizelce.</div></li>
+                        <li><span class="step-num">2</span><div>Poproś o dostęp do biura <strong>Lost &amp; Found</strong> lub okienka reklamacji bagażu linii lotniczej.</div></li>
+                        <li><span class="step-num">3</span><div>Sprawdź tablice – wiele lotnisk ma okienka dostępne ze strefy ogólnej bez ponownej odprawy.</div></li>
+                        <li><span class="step-num">4</span><div>Jeśli nie możesz wrócić – zadzwoń na <strong>infolinię linii lotniczej</strong> i poproś o numer sprawy (reference number).</div></li>
+                    </ol>
+                    <div class="wizard-time-warning">⏱️ <strong>Terminy:</strong> 7 dni na uszkodzenia · 21 dni na zaginięcie</div>
+                    <button class="btn btn-primary wizard-cta" id="wbtn-b-haspir">Mam PIR lub numer sprawy →</button>
+                    <button class="btn btn-link wizard-back" id="wbtn-b-back">← Wróć</button>
+                </div>
+                <!-- EKRAN 1C -->
+                <div class="wizard-screen hidden" id="wscreen-1c">
+                    <div class="wizard-alert alert-red">Wyszedłeś bez PIR – trudna sytuacja, ale nie wszystko stracone.</div>
+                    <h3 class="wizard-title">Masz 3 opcje</h3>
+                    <div class="wizard-options-list">
+                        <div class="wizard-option">
+                            <div class="option-header"><span class="option-num">1</span><strong>Wróć na lotnisko</strong><span class="option-tag">Najlepsza szansa</span></div>
+                            <p>Biuro Lost &amp; Found działa zazwyczaj całą dobę lub do ostatniego lotu.</p>
+                        </div>
+                        <div class="wizard-option">
+                            <div class="option-header"><span class="option-num">2</span><strong>Zadzwoń na infolinię linii</strong></div>
+                            <p>Zgłoś sprawę telefonicznie i poproś o numer sprawy (reference number).</p>
+                            <div class="airline-links">
+                                <a class="airline-link" href="https://www.lot.com/pl/pl/kontakt" target="_blank">📞 LOT Polish Airlines</a>
+                                <a class="airline-link" href="https://www.ryanair.com/gb/en/useful-info/help-centre/faq-overview/bag-lost" target="_blank">📞 Ryanair</a>
+                                <a class="airline-link" href="https://wizzair.com/pl-pl/information-and-services/customer-support/contact-us" target="_blank">📞 Wizz Air</a>
+                                <a class="airline-link" href="https://www.lufthansa.com/pl/pl/kontakt" target="_blank">📞 Lufthansa</a>
+                            </div>
+                        </div>
+                        <div class="wizard-option">
+                            <div class="option-header"><span class="option-num">3</span><strong>Zgłoś online przez stronę linii</strong></div>
+                            <p>Większe linie mają formularze online równoważne zgłoszeniu na lotnisku.</p>
+                        </div>
+                    </div>
+                    <div class="wizard-pir-info pir-warning">
+                        <span class="pir-badge danger">!</span>
+                        <p><strong>Bez PIR lub numeru sprawy DelayFix nie może reprezentować Twojej sprawy.</strong></p>
+                    </div>
+                    <button class="btn btn-primary wizard-cta" id="wbtn-c-haspir">Mam numer PIR lub numer sprawy →</button>
+                    <button class="btn btn-link wizard-back" id="wbtn-c-back">← Wróć</button>
+                </div>
+                <!-- EKRAN 2: Formularz PIR -->
+                <div class="wizard-screen hidden" id="wscreen-2">
+
+                    <h3 class="wizard-title">Zgłoszenie do DelayFix</h3>
+                    <p class="wizard-desc">Uzupełnij dane, abyśmy mogli przekazać Twoją sprawę ekspertom.</p>
+                    <div class="wizard-form">
+                        <div class="wform-group">
+                            <label class="wform-label">Typ zgłoszenia</label>
+                            <div class="baggage-type-selector">
+                                <label class="radio-container"><input type="radio" name="wiz_baggage_type" value="delayed_lost" checked><span class="radio-mark"></span><span class="radio-label">Opóźniony / Zgubiony bagaż</span></label>
+                                <label class="radio-container"><input type="radio" name="wiz_baggage_type" value="damaged"><span class="radio-mark"></span><span class="radio-label">Zniszczony bagaż</span></label>
+                            </div>
+                        </div>
+                        <div class="wform-group">
+                            <label class="wform-label" for="wiz-pir-number">Numer PIR lub numer sprawy <span class="required-star">*</span></label>
+                            <p class="wform-sublabel">np. WAW LO12345 lub REF-987654</p>
+                            <input type="text" id="wiz-pir-number" class="wform-input" placeholder="np. WAW LO12345" autocomplete="off">
+                            <p class="wform-error hidden" id="wiz-pir-error">⚠️ Numer PIR lub numer sprawy jest wymagany.</p>
+                        </div>
+                        <div class="wform-group">
+                            <label class="wform-label">Zdjęcie / skan raportu PIR <span class="optional-tag">(zalecane)</span></label>
+                            <div class="pir-upload-slot" id="wiz-btn-upload-pir">
+                                <span class="icon">📄</span>
+                                <span class="label" id="wiz-pir-upload-label">Dotknij, aby dodać zdjęcie lub PDF</span>
+                            </div>
+                            <input type="file" id="wiz-pir-file-input" accept="image/*,.pdf" class="hidden">
+                            <p class="wform-hint-green hidden" id="wiz-pir-upload-ok"></p>
+                        </div>
+                        <div class="wform-group">
+                            <label class="wform-label" for="wiz-baggage-desc">Opis walizki i zawartości</label>
+                            <textarea id="wiz-baggage-desc" class="wform-input wform-textarea" placeholder="Np. Czarna twarda walizka Samsonite, rozmiar L..."></textarea>
+                            <p class="wform-hint" id="wiz-checklist-import-hint"></p>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary wizard-cta" id="wiz-btn-submit">Przekaż sprawę do DelayFix</button>
+                    <p class="wizard-legal">Twoje dane zostaną przekazane do ekspertów DelayFix. Usługa jest bezpłatna.</p>
+                    <button class="btn btn-link wizard-back" id="wbtn-form-back">← Wróć</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Wizard – Zgłoszenie Zakłócenia Lotu (Overbooking / Zmiana Daty) -->
+        <div class="modal-overlay hidden" id="modal-disruption-wizard">
+            <div class="modal-content wizard-modal">
+                <div class="modal-header">
+                    <h3 id="disruption-wizard-title">Zgłoszenie do DelayFix</h3>
+                    <button class="btn-close-modal" id="btn-close-disruption-wizard">×</button>
+                </div>
+                <div class="wizard-screen">
+                    <!-- Sekcja Overbooking -->
+                    <div id="disruption-form-overbooking" class="hidden">
+                        <div class="wform-group">
+                            <label class="wform-label">Czy zaoferowano Ci lot alternatywny?</label>
+                            <div class="baggage-type-selector" style="display: flex; gap: 15px; margin-top: 5px;">
+                                <label class="radio-container"><input type="radio" name="overbooking_alt_flight" value="yes"><span class="radio-mark"></span><span class="radio-label">Tak</span></label>
+                                <label class="radio-container"><input type="radio" name="overbooking_alt_flight" value="no" checked><span class="radio-mark"></span><span class="radio-label">Nie</span></label>
+                            </div>
+                        </div>
+                        <div class="wform-group" style="margin-top: 15px;">
+                            <label class="wform-label">Czy wypłacono Ci odszkodowanie gotówkowe lub bon na lotnisku?</label>
+                            <div class="baggage-type-selector" style="display: flex; gap: 15px; margin-top: 5px;">
+                                <label class="radio-container"><input type="radio" name="overbooking_comp" value="yes"><span class="radio-mark"></span><span class="radio-label">Tak</span></label>
+                                <label class="radio-container"><input type="radio" name="overbooking_comp" value="no" checked><span class="radio-mark"></span><span class="radio-label">Nie</span></label>
+                            </div>
+                        </div>
+                        <div class="wform-group" style="margin-top: 15px;">
+                            <label class="wform-label" for="overbooking-details">Dodatkowe szczegóły (powód podany przez linię, itp.)</label>
+                            <textarea id="overbooking-details" class="wform-input wform-textarea" placeholder="Napisz co się wydarzyło..." style="min-height: 80px;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Sekcja Zmiana Daty/Godziny -->
+                    <div id="disruption-form-date-change" class="hidden">
+                        <div class="wform-group">
+                            <label class="wform-label">Kiedy dowiedziałeś się o zmianie lotu?</label>
+                            <div class="baggage-type-selector" style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;">
+                                <label class="radio-container"><input type="radio" name="date_change_notice" value="under_14" checked><span class="radio-mark"></span><span class="radio-label">Mniej niż 14 dni przed planowanym wylotem</span></label>
+                                <label class="radio-container"><input type="radio" name="date_change_notice" value="over_14"><span class="radio-mark"></span><span class="radio-label">14 dni lub więcej przed planowanym wylotem</span></label>
+                            </div>
+                        </div>
+                        <div class="wform-group" style="margin-top: 15px;">
+                            <label class="wform-label" for="date-change-new-date">Nowy termin lotu (jeśli jest znany)</label>
+                            <input type="date" id="date-change-new-date" class="wform-input">
+                        </div>
+                        <div class="wform-group" style="margin-top: 15px;">
+                            <label class="wform-label" for="date-change-details">Szczegóły zmiany (np. nowa trasa, przesiadki)</label>
+                            <textarea id="date-change-details" class="wform-input wform-textarea" placeholder="Opisz zaproponowaną zmianę..." style="min-height: 80px;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Wspólne przesyłanie dowodu -->
+                    <div class="wform-group" style="margin-top: 15px;">
+                        <label class="wform-label">Zdjęcie nowej karty / wiadomości o zmianie <span class="optional-tag">(opcjonalnie)</span></label>
+                        <div class="pir-upload-slot" id="disruption-btn-upload">
+                            <span class="icon">✉️</span>
+                            <span class="label" id="disruption-upload-label">Dotknij, aby dodać zdjęcie lub zrzut ekranu</span>
+                        </div>
+                        <input type="file" id="disruption-file-input" accept="image/*,.pdf" class="hidden">
+                        <p class="wform-hint-green hidden" id="disruption-upload-ok"></p>
+                    </div>
+
+                    <button class="btn btn-primary wizard-cta" id="btn-submit-disruption" style="margin-top: 20px; width: 100%;">Przekaż sprawę do DelayFix</button>
+                    <p class="wizard-legal" style="text-align: center; margin-top: 10px; font-size: 11px;">Zgłoszenie zostanie bezpłatnie przeanalizowane przez ekspertów DelayFix.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Dodaj Lot Ręcznie -->
+        <div class="modal-overlay hidden" id="modal-add-flight">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Dodaj bilet lotniczy</h3>
+                    <button class="btn-close-modal" id="btn-close-flight-modal">×</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-desc">Podaj dane z biletu lub karty pokładowej.</p>
+                    <div class="form-group">
+                        <label for="manual-flight-no">Numer lotu</label>
+                        <input type="text" id="manual-flight-no" placeholder="np. LO 379">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-flight-pnr">Kod rezerwacji (PNR)</label>
+                        <input type="text" id="manual-flight-pnr" placeholder="np. ABCDEF (6 znaków)" maxlength="6" style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-passenger-lastname">Nazwisko pasażera</label>
+                        <input type="text" id="manual-passenger-lastname" placeholder="np. Kowalski">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-flight-date">Data lotu</label>
+                        <input type="date" id="manual-flight-date">
+                    </div>
+                    <button class="btn btn-primary" id="btn-confirm-add-flight" style="width:100%; margin-top: 8px;">Zweryfikuj i dodaj bilet</button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /screen-main-app -->
+
+    <!-- ===================================================
+         EKRAN: POTWIERDZENIE ZGŁOSZENIA
+    =================================================== -->
+    <div class="screen" id="screen-success">
+        <div class="success-page">
+            <h2>Zgłoszenie wysłane!</h2>
+            <p class="success-desc">Dane zostały pomyślnie przekazane do ekspertów DelayFix.</p>
+            <div class="success-summary-card">
+                <div class="summary-row">
+                    <span class="label">Typ sprawy:</span>
+                    <span class="val" id="success-case-type">Odszkodowanie za lot</span>
+                </div>
+                <div class="summary-row">
+                    <span class="label">Numer telefonu:</span>
+                    <span class="val" id="success-phone">+48 501 234 567</span>
+                </div>
+                <div class="summary-row">
+                    <span class="label">Dane lotu:</span>
+                    <span class="val">LO 379 (WAW ➔ FRA)</span>
+                </div>
+            </div>
+            <div class="success-next-steps">
+                <h3>Co wydarzy się teraz?</h3>
+                <ul>
+                    <li>Ekspert DelayFix sprawdzi szczegóły lotu lub dokumentację bagażu.</li>
+                    <li>Skontaktujemy się z Tobą telefonicznie pod wskazanym numerem.</li>
+                    <li>Całość analizy jest całkowicie darmowa.</li>
+                </ul>
+            </div>
+            <button class="btn btn-primary" id="btn-success-back">Powrót do pulpitu</button>
+        </div>
+    </div>
+
+    <!-- Symulacja powiadomienia SMS (pozostaje jako toast) -->
+    <div class="sms-notification-alert" id="sms-notification">
+        <div class="sms-header">
+            <span class="sms-app-name">WIADOMOŚĆ SMS</span>
+            <span class="sms-time">Teraz</span>
+        </div>
+        <div class="sms-body">
+            <strong>mPasażer:</strong> Witaj! Twój lot LO 379 został dodany.
+            <span class="sms-link" id="sms-link-trigger">Zaloguj się</span>
+        </div>
+    </div>
+
+    <!-- Ukryte elementy potrzebne przez JS (log console z symulatora) -->
+    <div id="log-console" style="display:none;"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
