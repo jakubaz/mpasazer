@@ -117,10 +117,12 @@
                             <div class="form-group">
                                 <label for="profile-email">Adres e-mail</label>
                                 <input type="email" id="profile-email" placeholder="np. jan@example.com" style="width: 100%; padding: 11px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--surface-border); background: var(--surface-input); color: var(--text-primary); font-size: 14px; box-sizing: border-box;">
+                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Zmiana e-maila wymaga weryfikacji przez link.</p>
                             </div>
                             <div class="form-group">
                                 <label for="profile-phone">Numer telefonu</label>
-                                <input type="text" id="profile-phone" readonly disabled style="width: 100%; padding: 11px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--surface-border); background: rgba(255,255,255,0.03); color: var(--text-muted); font-size: 14px; box-sizing: border-box; cursor: not-allowed;">
+                                <input type="tel" id="profile-phone" placeholder="np. +48 501 234 567" style="width: 100%; padding: 11px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--surface-border); background: var(--surface-input); color: var(--text-primary); font-size: 14px; box-sizing: border-box;">
+                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Zmiana numeru wymaga weryfikacji przez SMS.</p>
                             </div>
                             <button class="btn btn-secondary-action" id="btn-save-profile" style="margin-top: 5px;">Zapisz dane</button>
                         </div>
@@ -207,7 +209,7 @@
                         <div class="live-update-bar">
                             <span class="live-dot" id="live-dot"></span>
                             <span class="live-label" id="live-label">Dane na żywo</span>
-                            <span class="live-updated" id="live-updated">Odświeżam…</span>
+                            <span class="live-updated" id="live-updated">Symulacja DelayFix</span>
                             <button class="btn-refresh" id="btn-refresh-flight" title="Odśwież teraz">↻</button>
                         </div>
 
@@ -286,7 +288,8 @@
                             <button class="btn-add-item" id="btn-add-item">+</button>
                         </div>
                         <div class="baggage-photos-section">
-                            <h3>Zdjęcia walizki i zawartości (Dowód)</h3>
+                            <h3>Zdjęcia walizki i zawartości <span style="font-size: 11px; font-weight: 500; color: var(--text-muted); background: var(--bg-page); padding: 2px 8px; border-radius: 10px; margin-left: 4px;">(opcjonalnie)</span></h3>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">Zdjęcia nie są wymagane do zgłoszenia – mogą przyspieszyć weryfikację.</p>
                             <div class="photos-grid" id="photos-grid">
                                 <div class="photo-slot upload-trigger" id="btn-upload-photo">
                                     <span class="icon">+</span>
@@ -298,7 +301,7 @@
                         <button class="btn btn-secondary-danger btn-disabled" id="btn-claim-baggage" disabled>
                             ⚠️ Zgłoś sprawę bagażową do DelayFix
                         </button>
-                        <p class="baggage-hint" id="baggage-btn-hint">(Dokończ checklistę i dodaj zdjęcie, aby odblokować)</p>
+                        <p class="baggage-hint" id="baggage-btn-hint">(Dokończ checklistę bagażową, aby odblokować)</p>
                     </section>
 
                     <!-- FAQ w szczegółach lotu -->

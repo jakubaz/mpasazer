@@ -377,10 +377,10 @@ function openFlightDetails(flightId) {
 
 function openFlightDetailsWithRefresh(flightId) {
     openFlightDetails(flightId);
-    setTimeout(() => {
-        refreshFlightStatus();
-        startFlightAutoRefresh();
-    }, 80);
+    // Ustaw statyczny stan paska "na żywo" od razu (bez kręcenia spinnera)
+    updateLiveBar('ok');
+    // Auto-refresh uruchamiamy z opóźnieniem
+    startFlightAutoRefresh();
 }
 
 // Dodawanie testowego lotu z FAB (lub przycisku)
@@ -795,7 +795,7 @@ function renderPhotos() {
     });
 }
 
-// Zgłaszanie bagażu widoczne tylko gdy cała checklista jest zaznaczona i jest min 1 zdjęcie
+// Zgłoszenie bagażu dostępne gdy cała checklista jest zaznaczona (zdjęcia są opcjonalne)
 function updateBaggageButtonVisibility() {
     const flight = getActiveFlight();
     if (!flight) return;
@@ -806,11 +806,14 @@ function updateBaggageButtonVisibility() {
     if (allChecked) {
         btnClaimBaggage.disabled = false;
         btnClaimBaggage.classList.remove('btn-disabled');
-        if (hintElement) hintElement.textContent = '(Możesz zgłosić sprawę do DelayFix – dodanie zdjęć jest opcjonalne)';
+        if (hintElement) hintElement.style.display = 'none';
     } else {
         btnClaimBaggage.disabled = true;
         btnClaimBaggage.classList.add('btn-disabled');
-        if (hintElement) hintElement.textContent = '(Dokończ checklistę bagażową, aby odblokować)';
+        if (hintElement) {
+            hintElement.style.display = 'block';
+            hintElement.textContent = '(Dokończ checklistę bagażową, aby odblokować)';
+        }
     }
 }
 
@@ -818,29 +821,109 @@ function updateBaggageButtonVisibility() {
 function renderProfile() {
     if (profileNameInput) profileNameInput.value = appState.profile.name;
     if (profileEmailInput) profileEmailInput.value = appState.profile.email;
-    if (profilePhoneInput) profilePhoneInput.value = appState.profile.phone || appState.phone || '+48 501 234 567';
+    // Numer telefonu z logowania – zawsze widoczny, ale pole jest readonly
+    if (profilePhoneInput) profilePhoneInput.value = appState.phone || appState.profile.phone || '+48 501 234 567';
+}
+
+// Modal weryfikacji linku (email / telefon)
+function showVerificationModal(channel, value) {
+    // Usuń poprzedni modal jeśli istnieje
+    const existing = document.getElementById('modal-verification');
+    if (existing) existing.remove();
+
+    const isEmail = channel === 'email';
+    const channelLabel = isEmail ? 'adres e-mail' : 'numer telefonu';
+    const channelIcon = isEmail ? '✉️' : '📱';
+    const instruction = isEmail
+        ? `Na adres <strong>${value}</strong> wysłaliśmy link weryfikacyjny.`
+        : `Na numer <strong>${value}</strong> wysłaliśmy SMS z linkiem weryfikacyjnym.`;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-verification';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+        <div class="modal-content" style="max-width: 380px; text-align: center; padding: 32px 24px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">${channelIcon}</div>
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary);">Potwierdź ${channelLabel}</h3>
+            <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px;">${instruction}</p>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">Kliknij w link, aby potwierdzić zmianę. Do tego czasu Twoje dotychczasowe dane pozostają aktywne.</p>
+            <div style="background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 10px; padding: 14px; margin-bottom: 20px;">
+                <p style="font-size: 12px; color: var(--primary-accent); font-weight: 600; margin: 0;">📧 Sprawdź skrzynkę odbiorczą i folder SPAM</p>
+            </div>
+            <button id="btn-simulate-verify-link" class="btn btn-primary" style="margin-bottom: 10px;">Symuluj kliknięcie w link ✓</button>
+            <button id="btn-close-verify-modal" class="btn btn-link">Zamknij</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Zamknięcie przez overlay
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById('btn-close-verify-modal').addEventListener('click', () => overlay.remove());
+
+    // Symulacja kliknięcia w link – aktualizuje dane
+    document.getElementById('btn-simulate-verify-link').addEventListener('click', () => {
+        if (isEmail) {
+            appState.profile.email = value;
+            addLog(`Email potwierdzony: ${value}. Dane zaktualizowane.`, 'system');
+        } else {
+            appState.phone = value;
+            appState.profile.phone = value;
+            if (userPhoneDisplay) userPhoneDisplay.textContent = value;
+            addLog(`Numer telefonu potwierdzony: ${value}. Dane zaktualizowane.`, 'system');
+        }
+        renderProfile();
+        overlay.remove();
+
+        // Feedback sukcesu
+        const successToast = document.createElement('div');
+        successToast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+        successToast.textContent = `✓ ${isEmail ? 'Adres e-mail' : 'Numer telefonu'} zaktualizowany!`;
+        document.body.appendChild(successToast);
+        setTimeout(() => successToast.remove(), 3000);
+    });
 }
 
 if (btnSaveProfile) {
     btnSaveProfile.addEventListener('click', () => {
-        const name = profileNameInput.value.trim();
-        const email = profileEmailInput.value.trim();
-        if (!name || !email) {
-            alert('Proszę podać imię i nazwisko oraz adres e-mail.');
+        const name = profileNameInput ? profileNameInput.value.trim() : '';
+        const newEmail = profileEmailInput ? profileEmailInput.value.trim() : '';
+        const newPhone = profilePhoneInput ? profilePhoneInput.value.trim() : '';
+
+        if (!name) {
+            alert('Proszę podać imię i nazwisko.');
             return;
         }
+
+        // Zapisz imię od razu
         appState.profile.name = name;
-        appState.profile.email = email;
-        addLog(`Zapisano dane kontaktowe profilu: ${name}, ${email}.`, 'system');
-        
-        btnSaveProfile.textContent = 'Zapisano ✓';
-        btnSaveProfile.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
-        btnSaveProfile.style.borderColor = '#10B981';
-        btnSaveProfile.style.color = '#10B981';
-        setTimeout(() => {
-            btnSaveProfile.textContent = 'Zapisz dane';
-            btnSaveProfile.style = '';
-        }, 2000);
+
+        const currentEmail = appState.profile.email;
+        const currentPhone = appState.phone || appState.profile.phone;
+
+        const emailChanged = newEmail && newEmail !== currentEmail;
+        const phoneChanged = newPhone && newPhone !== currentPhone;
+
+        if (emailChanged) {
+            addLog(`Zmiana adresu e-mail z ${currentEmail} na ${newEmail}. Wysłano link weryfikacyjny.`, 'system');
+            showVerificationModal('email', newEmail);
+        }
+        if (phoneChanged) {
+            addLog(`Zmiana numeru telefonu na ${newPhone}. Wysłano SMS z linkiem.`, 'system');
+            showVerificationModal('phone', newPhone);
+        }
+
+        if (!emailChanged && !phoneChanged) {
+            // Tylko imię zmienione – zapisz i pokaż feedback
+            addLog(`Zapisano imię i nazwisko: ${name}.`, 'system');
+            btnSaveProfile.textContent = 'Zapisano ✓';
+            btnSaveProfile.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+            btnSaveProfile.style.borderColor = '#10B981';
+            btnSaveProfile.style.color = '#10B981';
+            setTimeout(() => {
+                btnSaveProfile.textContent = 'Zapisz dane';
+                btnSaveProfile.style = '';
+            }, 2000);
+        }
     });
 }
 
