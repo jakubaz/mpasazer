@@ -1755,6 +1755,3 @@ function parseFlightDate(dateStr) {
     }
     return new Date(dateStr);
 }
-
-
-
