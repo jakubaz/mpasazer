@@ -6,6 +6,12 @@ let appState = {
     smsCode: '982317',
     isPurchaseSimulated: false,
     activeFlightId: null,
+    activeFilter: 'all',
+    profile: {
+        name: 'Jan Kowalski',
+        email: 'jan.kowalski@example.com',
+        phone: ''
+    },
     flights: [
         {
             id: 1,
@@ -18,14 +24,66 @@ let appState = {
             status: 'pending',
             checklist: [
                 { id: 1, text: 'Paszport i dokumenty podróżne', checked: true },
-                { id: 2, text: 'Ładowarka do telefonu i powerbank', checked: false },
-                { id: 3, text: 'Lekarstwa pierwszej potrzeby', checked: false },
-                { id: 4, text: 'Ubrania na 5 dni', checked: false }
+                { id: 2, text: 'Ładowarka do telefonu i powerbank', checked: true },
+                { id: 3, text: 'Lekarstwa pierwszej potrzeby', checked: true },
+                { id: 4, text: 'Ubrania na 5 dni', checked: true }
+            ],
+            photos: []
+        },
+        {
+            id: 2,
+            number: 'W6 1302',
+            routeFrom: 'LTN',
+            routeTo: 'WAW',
+            timeStart: '18:45',
+            timeEnd: '22:15',
+            date: '17 Lipca 2026',
+            status: 'delayed',
+            checklist: [
+                { id: 1, text: 'Paszport i dokumenty podróżne', checked: false },
+                { id: 2, text: 'Lekarstwa', checked: false }
+            ],
+            photos: []
+        },
+        {
+            id: 3,
+            number: 'LH 1614',
+            routeFrom: 'MUC',
+            routeTo: 'WAW',
+            timeStart: '10:30',
+            timeEnd: '12:00',
+            date: '24 Lipca 2026',
+            status: 'pending',
+            checklist: [
+                { id: 1, text: 'Paszport', checked: true },
+                { id: 2, text: 'Bilety', checked: false }
             ],
             photos: []
         }
     ],
-    claims: [] // submitted claims
+    claims: [
+        {
+            id: 101,
+            type: 'flight',
+            title: 'Weryfikacja opóźnienia lotu (LO 379)',
+            date: '04.07.2026 15:30',
+            status: 'completed'
+        },
+        {
+            id: 102,
+            type: 'baggage',
+            title: 'Roszczenie bagażowe: Zniszczony bagaż',
+            date: '10.07.2026 12:15',
+            status: 'rejected'
+        },
+        {
+            id: 103,
+            type: 'overbooking',
+            title: 'Zakłócenie: Odszkodowanie za Overbooking',
+            date: '17.07.2026 10:45',
+            status: 'sent'
+        }
+    ]
 };
 
 // Selektory DOM
@@ -61,7 +119,6 @@ const btnLogout = document.getElementById('btn-logout');
 // Pulpit
 const flightStatusBadge = document.getElementById('flight-status-badge');
 const flightClaimBanner = document.getElementById('flight-claim-banner');
-const btnClaimFlight = document.getElementById('btn-claim-flight');
 const btnClaimBaggage = document.getElementById('btn-claim-baggage');
 
 // Demo
@@ -83,6 +140,12 @@ const photosGrid = document.getElementById('photos-grid');
 const appLogo = document.getElementById('app-logo');
 const btnThemeToggle = document.getElementById('btn-theme-toggle');
 
+// Profil
+const profileNameInput = document.getElementById('profile-name');
+const profileEmailInput = document.getElementById('profile-email');
+const profilePhoneInput = document.getElementById('profile-phone');
+const btnSaveProfile = document.getElementById('btn-save-profile');
+
 // FAB i Modal
 const btnFabDemo = document.getElementById('btn-fab-demo');
 const modalDemo = document.getElementById('modal-demo');
@@ -97,6 +160,11 @@ const manualFlightNoInput = document.getElementById('manual-flight-no');
 const manualFlightPnrInput = document.getElementById('manual-flight-pnr');
 const manualPassengerLastnameInput = document.getElementById('manual-passenger-lastname');
 const manualFlightDateInput = document.getElementById('manual-flight-date');
+const manualFlightTimeInput = document.getElementById('manual-flight-time');
+const manualContactNameInput = document.getElementById('manual-contact-name');
+const manualContactEmailInput = document.getElementById('manual-contact-email');
+const manualContactPhoneInput = document.getElementById('manual-contact-phone');
+const manualContactConfirmInput = document.getElementById('manual-contact-confirm');
 
 // Wizard Bagaż
 const modalBaggageWizard = document.getElementById('modal-baggage-wizard');
@@ -181,22 +249,70 @@ function getActiveFlight() {
 function renderFlightsList() {
     flightsListContainer.innerHTML = '';
     
-    if (appState.flights.length === 0) {
-        flightsListContainer.innerHTML = '<div class="empty-claims">Nie masz żadnych przypisanych lotów.</div>';
+    // Filtrowanie lotów
+    const today = new Date(2026, 6, 18); // Simulated date: 18 Lipca 2026
+    
+    const filteredFlights = appState.flights.filter(flight => {
+        const flightDate = parseFlightDate(flight.date);
+        const diffTime = today - flightDate;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        const isOldArchive = diffDays > 7 && flight.status !== 'delayed';
+        
+        switch (appState.activeFilter) {
+            case 'pending':
+                // Zaplanowany: status pending i data dzisiaj lub w przyszłości (diffDays <= 0)
+                return flight.status === 'pending' && diffDays <= 0;
+            case 'delayed':
+                // Do odszkodowania: status delayed
+                return flight.status === 'delayed';
+            case 'archived':
+                // Archiwalne: starsze niż dzisiaj
+                return diffDays > 0;
+            case 'all':
+            default:
+                // Nie pokazujemy starych archiwalnych na głównym pulpicie
+                return !isOldArchive;
+        }
+    });
+    
+    if (filteredFlights.length === 0) {
+        flightsListContainer.innerHTML = '<div class="empty-claims">Brak lotów w tej kategorii.</div>';
         return;
     }
     
-    appState.flights.forEach(flight => {
+    filteredFlights.forEach(flight => {
         const item = document.createElement('div');
         item.className = 'flight-list-item';
         
-        const statusClass = flight.status === 'pending' ? 'status-pending' : 'status-delayed';
-        const statusText = flight.status === 'pending' ? 'Zaplanowany' : 'Opóźniony';
+        const flightDate = parseFlightDate(flight.date);
+        const diffTime = today - flightDate;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        let statusClass = 'status-pending';
+        let statusText = 'Zaplanowany';
+        let badgeHtml = '';
+        
+        if (flight.status === 'delayed') {
+            statusClass = 'status-delayed';
+            statusText = 'Opóźniony';
+            badgeHtml = `<span style="font-size: 10px; font-weight: 700; background: rgba(139, 92, 246, 0.15); color: #C084FC; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">Możliwe odszkodowanie</span>`;
+        } else if (diffDays > 0) {
+            statusClass = 'status-pending'; // szary/neutralny dla archiwum
+            statusText = 'Zakończony';
+        }
+        
+        // Wskaźnik checklisty bagażowej
+        const uncheckedCount = flight.checklist.filter(c => !c.checked).length;
+        const checklistPrompt = uncheckedCount > 0 
+            ? `<div class="flight-list-checklist-prompt" style="font-size: 11px; color: #F59E0B; margin-top: 4px; font-weight: 600;">⚠️ Dokończ checklistę bagażową</div>` 
+            : '';
         
         item.innerHTML = `
             <div class="flight-list-details">
-                <span class="flight-list-number">LOT ${flight.number}</span>
+                <span class="flight-list-number">LOT ${flight.number} ${badgeHtml}</span>
                 <span class="flight-list-route">${flight.date} • ${flight.routeFrom} ➔ ${flight.routeTo}</span>
+                ${checklistPrompt}
             </div>
             <span class="flight-list-status ${statusClass}">${statusText}</span>
         `;
@@ -206,6 +322,21 @@ function renderFlightsList() {
         });
         
         flightsListContainer.appendChild(item);
+    });
+}
+
+// Obsługa kliknięć filtrów
+const filtersBar = document.getElementById('flight-filters-bar');
+if (filtersBar) {
+    filtersBar.addEventListener('click', (e) => {
+        const btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+        
+        filtersBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        appState.activeFilter = btn.dataset.filter;
+        renderFlightsList();
     });
 }
 
@@ -318,6 +449,10 @@ btnVerifyOtp.addEventListener('click', () => {
     if (code === appState.smsCode || code === '123456') {
         addLog(`Udało się uwierzytelnić użytkownika kodem SMS.`, 'system');
         userPhoneDisplay.textContent = appState.phone || '+48 501 234 567';
+        
+        // Inicjalizacja profilu
+        appState.profile.phone = appState.phone || '+48 501 234 567';
+        renderProfile();
         
         // Inicjalizacja widoku głównego
         renderFlightsList();
@@ -435,6 +570,17 @@ btnCloseWizard.addEventListener('click', closeWizard);
 
 // Ręczne dodawanie lotu modal
 btnAddFlightManual.addEventListener('click', () => {
+    if (manualContactNameInput) manualContactNameInput.value = appState.profile.name;
+    if (manualContactEmailInput) manualContactEmailInput.value = appState.profile.email;
+    if (manualContactPhoneInput) manualContactPhoneInput.value = appState.profile.phone || appState.phone || '+48 501 234 567';
+    if (manualContactConfirmInput) manualContactConfirmInput.checked = true;
+
+    manualFlightNoInput.value = '';
+    manualFlightPnrInput.value = '';
+    manualPassengerLastnameInput.value = '';
+    manualFlightDateInput.value = '';
+    if (manualFlightTimeInput) manualFlightTimeInput.value = '';
+
     modalAddFlight.classList.remove('hidden');
 });
 btnCloseFlightModal.addEventListener('click', () => {
@@ -445,9 +591,13 @@ btnConfirmAddFlight.addEventListener('click', () => {
     const pnr = manualFlightPnrInput.value.trim();
     const lastname = manualPassengerLastnameInput.value.trim();
     const flightDate = manualFlightDateInput.value;
+    const flightTime = manualFlightTimeInput ? manualFlightTimeInput.value : '';
+    const contactName = manualContactNameInput ? manualContactNameInput.value.trim() : '';
+    const contactEmail = manualContactEmailInput ? manualContactEmailInput.value.trim() : '';
+    const contactPhone = manualContactPhoneInput ? manualContactPhoneInput.value : '';
     
-    if(!flightNo || !pnr || !lastname || !flightDate) {
-        alert('Proszę wypełnić wszystkie pola formularza!');
+    if(!flightNo || !pnr || !lastname || !flightDate || !flightTime || !contactName || !contactEmail) {
+        alert('Proszę wypełnić wszystkie pola formularza (w tym dane kontaktowe)!');
         return;
     }
     
@@ -461,6 +611,17 @@ btnConfirmAddFlight.addEventListener('click', () => {
     setTimeout(() => {
         addLog(`[API LINII]: Bilet i status lotu ${flightNo.toUpperCase()} zweryfikowane pomyślnie.`, 'webhook');
         
+        // Aktualizuj profil jeśli użytkownik potwierdził dane
+        if (manualContactConfirmInput && manualContactConfirmInput.checked) {
+            appState.profile.name = contactName;
+            appState.profile.email = contactEmail;
+            appState.profile.phone = contactPhone;
+            renderProfile();
+        }
+        
+        // Symulacja wysłania leada do CRM
+        addLog(`[WEBHOOK]: Wysłano leada do CRM DelayFix. Pasażer: ${contactName}, E-mail: ${contactEmail}, Telefon: ${contactPhone}. Lot: ${flightNo.toUpperCase()}, PNR: ${pnr.toUpperCase()}, Planowany wylot: ${flightDate} o ${flightTime}.`, 'webhook');
+        
         const newId = appState.flights.length > 0 ? Math.max(...appState.flights.map(f => f.id)) + 1 : 1;
         const formattedDate = new Date(flightDate).toLocaleDateString('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' });
         
@@ -469,8 +630,8 @@ btnConfirmAddFlight.addEventListener('click', () => {
             number: flightNo.toUpperCase(),
             routeFrom: 'WAW',
             routeTo: 'LTN',
-            timeStart: '16:20',
-            timeEnd: '17:55',
+            timeStart: flightTime,
+            timeEnd: addMinutes(flightTime, 95), // symulacja czasu dolotu
             date: formattedDate,
             status: 'pending',
             checklist: [
@@ -490,6 +651,7 @@ btnConfirmAddFlight.addEventListener('click', () => {
         manualFlightPnrInput.value = '';
         manualPassengerLastnameInput.value = '';
         manualFlightDateInput.value = '';
+        if (manualFlightTimeInput) manualFlightTimeInput.value = '';
         
         addLog(`Dodano lot ${flightNo.toUpperCase()} ręcznie przez użytkownika.`, 'system');
     }, 1000);
@@ -639,18 +801,47 @@ function updateBaggageButtonVisibility() {
     if (!flight) return;
     
     const allChecked = flight.checklist.length > 0 && flight.checklist.every(item => item.checked);
-    const hasPhoto = flight.photos.length > 0;
     
     const hintElement = document.getElementById('baggage-btn-hint');
-    if (allChecked && hasPhoto) {
+    if (allChecked) {
         btnClaimBaggage.disabled = false;
         btnClaimBaggage.classList.remove('btn-disabled');
-        if (hintElement) hintElement.textContent = '(Możesz zgłosić sprawę do DelayFix)';
+        if (hintElement) hintElement.textContent = '(Możesz zgłosić sprawę do DelayFix – dodanie zdjęć jest opcjonalne)';
     } else {
         btnClaimBaggage.disabled = true;
         btnClaimBaggage.classList.add('btn-disabled');
-        if (hintElement) hintElement.textContent = '(Dokończ checklistę i dodaj zdjęcie, aby odblokować)';
+        if (hintElement) hintElement.textContent = '(Dokończ checklistę bagażową, aby odblokować)';
     }
+}
+
+// Renderowanie i zapisywanie profilu
+function renderProfile() {
+    if (profileNameInput) profileNameInput.value = appState.profile.name;
+    if (profileEmailInput) profileEmailInput.value = appState.profile.email;
+    if (profilePhoneInput) profilePhoneInput.value = appState.profile.phone || appState.phone || '+48 501 234 567';
+}
+
+if (btnSaveProfile) {
+    btnSaveProfile.addEventListener('click', () => {
+        const name = profileNameInput.value.trim();
+        const email = profileEmailInput.value.trim();
+        if (!name || !email) {
+            alert('Proszę podać imię i nazwisko oraz adres e-mail.');
+            return;
+        }
+        appState.profile.name = name;
+        appState.profile.email = email;
+        addLog(`Zapisano dane kontaktowe profilu: ${name}, ${email}.`, 'system');
+        
+        btnSaveProfile.textContent = 'Zapisano ✓';
+        btnSaveProfile.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+        btnSaveProfile.style.borderColor = '#10B981';
+        btnSaveProfile.style.color = '#10B981';
+        setTimeout(() => {
+            btnSaveProfile.textContent = 'Zapisz dane';
+            btnSaveProfile.style = '';
+        }, 2000);
+    });
 }
 
 // Renderowanie sekcji Moje Sprawy
@@ -667,8 +858,15 @@ function renderClaims() {
             const item = document.createElement('div');
             item.className = 'claim-item';
             
-            const statusClass = claim.status === 'sent' ? 'sent' : 'error';
-            const statusText = claim.status === 'sent' ? 'Wysłano' : 'Błąd wysyłki';
+            let statusClass = 'sent';
+            let statusText = 'Wysłano';
+            if (claim.status === 'completed') {
+                statusClass = 'completed';
+                statusText = 'Zakończony';
+            } else if (claim.status === 'rejected') {
+                statusClass = 'rejected';
+                statusText = 'Odrzucono';
+            }
             
             item.innerHTML = `
                 <div class="claim-item-details">
@@ -686,31 +884,7 @@ function renderClaims() {
 // OBSŁUGA ZGŁOSZEŃ (LEADS TO DELAYFIX)
 // ==========================================================================
 
-// Zgłoszenie lotu
-btnClaimFlight.addEventListener('click', () => {
-    const flight = getActiveFlight();
-    if (!flight) return;
-    
-    addLog(`INICJACJA: Zgłoszenie roszczenia za opóźniony lot ${flight.number}.`, 'system');
-    
-    setTimeout(() => {
-        addLog(`LEAD WYSŁANY: Dane pasażera (${appState.phone}) i lotu ${flight.number} trafiły do CRM DelayFix.`, 'webhook');
-        addLog(`Konsultant DelayFix został powiadomiony i podejmie kontakt telefoniczny.`, 'webhook');
-        
-        appState.claims.push({
-            id: Date.now(),
-            type: 'flight',
-            title: `Weryfikacja opóźnienia lotu (${flight.number})`,
-            date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString().slice(0,5),
-            status: 'sent'
-        });
-        renderClaims();
-        
-        successCaseType.textContent = 'Weryfikacja opóźnienia lotu';
-        successPhone.textContent = appState.phone || '+48 501 234 567';
-        showScreen(screenSuccess);
-    }, 800);
-});
+
 
 // Zgłoszenie bagażu – otwiera wizard
 btnClaimBaggage.addEventListener('click', () => {
@@ -938,8 +1112,12 @@ document.getElementById('wiz-btn-submit').addEventListener('click', () => {
         const itemNames = flight.checklist.map(i => i.text).join(', ') || 'brak danych z checklisty';
         const photosInfo = flight.photos.length > 0 ? `${flight.photos.length} zdjęć bagażu` : 'brak zdjęć';
         const pirInfo = wizardState.pirFileUploaded ? 'z załączonym skanem PIR' : 'bez skanu PIR';
+        
+        const value800Radio = document.querySelector('input[name="wiz_baggage_value_800"]:checked');
+        const valueOver800 = value800Radio ? value800Radio.value === 'yes' : false;
+        const valueLabel = valueOver800 ? 'Wartość powyżej 800 PLN' : 'Wartość do 800 PLN';
 
-        addLog(`LEAD WYSŁANY: ${baggageTypeTitle} (${pirInfo}). Numer PIR: ${pirNumber}. Zawartość: ${itemNames}. ${photosInfo}. Dane do CRM DelayFix.`, 'webhook');
+        addLog(`LEAD WYSŁANY: ${baggageTypeTitle} (${pirInfo}). Wartość: ${valueLabel}. Numer PIR: ${pirNumber}. Zawartość: ${itemNames}. ${photosInfo}. Dane do CRM DelayFix.`, 'webhook');
         addLog(`Konsultant DelayFix sprawdzi wymogi prawne (terminy: 7-21 dni) i skontaktuje się telefonicznie.`, 'webhook');
 
         appState.claims.push({
@@ -1466,4 +1644,34 @@ if (btnBackHomeNav) {
         stopFlightAutoRefresh();
     });
 }
+
+function addMinutes(timeString, minutes) {
+    if (!timeString || !timeString.includes(':')) return '18:00';
+    const [h, m] = timeString.split(':').map(Number);
+    let totalMinutes = h * 60 + m + minutes;
+    const newH = Math.floor(totalMinutes / 60) % 24;
+    const newM = totalMinutes % 60;
+    return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+}
+
+function parseFlightDate(dateStr) {
+    const months = {
+        'stycznia': 0, 'lutego': 1, 'marca': 2, 'kwietnia': 3, 'maja': 4, 'czerwca': 5,
+        'lipca': 6, 'sierpnia': 7, 'września': 8, 'października': 9, 'listopada': 10, 'grudnia': 11,
+        'styczeń': 0, 'luty': 1, 'marzec': 2, 'kwiecień': 3, 'maj': 4, 'czerwiec': 5,
+        'lipiec': 6, 'sierpień': 7, 'wrzesień': 8, 'październik': 9, 'listopad': 10, 'grudzień': 11
+    };
+    if (!dateStr) return new Date();
+    const parts = dateStr.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/);
+    if (parts.length >= 3) {
+        const day = parseInt(parts[0], 10);
+        const monthName = parts[1];
+        const year = parseInt(parts[2], 10);
+        const monthIndex = months[monthName] !== undefined ? months[monthName] : 6;
+        return new Date(year, monthIndex, day);
+    }
+    return new Date(dateStr);
+}
+
+
 

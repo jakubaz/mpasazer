@@ -543,9 +543,36 @@ body.dark-mode .btn[disabled] {
 .verify-row input { flex: 1; }
 .verify-row .btn { width: auto; padding: 11px 16px; white-space: nowrap; }
 
-/* ============================================================
-   LOTY – LISTA
-   ============================================================ */
+/* Filtry lotów */
+.flight-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+.filter-btn {
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--transition);
+}
+.filter-btn:hover {
+    border-color: var(--primary-accent);
+    color: var(--text-primary);
+}
+.filter-btn.active {
+    background: var(--primary-accent);
+    color: white;
+    border-color: var(--primary-accent);
+}
+
 .flights-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
 
 .flight-list-item {
@@ -901,12 +928,20 @@ body.dark-mode .banner-body h4 { color: #FCA5A5; }
     white-space: nowrap;
 }
 .claim-status.sent {
+    background: rgba(245,158,11,0.12);
+    color: #F59E0B;
+}
+.claim-status.rejected {
+    background: rgba(239,68,68,0.12);
+    color: #EF4444;
+}
+.claim-status.completed {
     background: rgba(16,185,129,0.12);
-    color: var(--success-color);
+    color: #10B981;
 }
 .claim-status.error {
     background: rgba(239,68,68,0.12);
-    color: var(--danger-color);
+    color: #EF4444;
 }
 
 /* ============================================================
