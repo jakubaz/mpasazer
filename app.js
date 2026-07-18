@@ -848,7 +848,7 @@ function showVerificationModal(channel, value) {
             <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px;">${instruction}</p>
             <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">Kliknij w link, aby potwierdzić zmianę. Do tego czasu Twoje dotychczasowe dane pozostają aktywne.</p>
             <div style="background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 10px; padding: 14px; margin-bottom: 20px;">
-                <p style="font-size: 12px; color: var(--primary-accent); font-weight: 600; margin: 0;">📧 Sprawdź skrzynkę odbiorczą i folder SPAM</p>
+                <p style="font-size: 12px; color: var(--primary-accent); font-weight: 600; margin: 0;">${isEmail ? '📧 Sprawdź skrzynkę odbiorczą i folder SPAM' : '📱 Sprawdź wiadomości SMS na swoim telefonie'}</p>
             </div>
             <button id="btn-simulate-verify-link" class="btn btn-primary" style="margin-bottom: 10px;">Symuluj kliknięcie w link ✓</button>
             <button id="btn-close-verify-modal" class="btn btn-link">Zamknij</button>
